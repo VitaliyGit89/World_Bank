@@ -25,4 +25,4 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         # Добавьте другие переменные здесь
-      run: python ваш_скрипт.py
+      run: python WorldBank.ipynb
