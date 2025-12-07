@@ -10,3 +10,6 @@ WB
 • Для дашборда: streamlit, datalens, tableau (на выбор) 
 • Для документации / отчета: Jupyter Notebook, Jupyter Lab 
 • Система контроля версий: GitHub / GitLab
+
+https://datalens.yandex/2ltye9csw59mn (v.1)
+https://datalens.yandex/2l0p671rq76mn (v.2)
