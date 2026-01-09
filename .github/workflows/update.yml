@@ -1,8 +1,8 @@
-name: Update Database Daily
+name: Update Database Weekly
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 02:00 UTC каждый день
+    - cron: '0 2 * * 0'  # Каждое воскресенье в 02:00 UTC
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
@@ -18,11 +18,17 @@ jobs:
         python-version: '3.10'
         
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
       
     - name: Run update script
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         # Добавьте другие переменные здесь
-      run: python WorldBank.ipynb
+      run: |
+        python -c "
+        # Для .ipynb файла:
+        pip install jupyter nbconvert
+        jupyter nbconvert --to notebook --execute WorldBank.ipynb --output WorldBank_executed.ipynb
