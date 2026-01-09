@@ -6,11 +6,12 @@ on:
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
-  update:
+  update-database:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -20,15 +21,85 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install -r requirements.txt
+        # Если есть requirements.txt - установить, если нет - базовые пакеты
+        if [ -f requirements.txt ]; then 
+          pip install -r requirements.txt
+        else
+          pip install python-dotenv pandas requests psycopg2-binary sqlalchemy
+          pip install supabase  # если используете Supabase клиент
+        fi
       
-    - name: Run update script
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        # Добавьте другие переменные здесь
+    - name: Create environment file
       run: |
-        python -c "
-        # Для .ipynb файла:
-        pip install jupyter nbconvert
-        jupyter nbconvert --to notebook --execute WorldBank.ipynb --output WorldBank_executed.ipynb
+        echo "Creating main.env file..."
+        
+        # Создаем файл с переменными окружения
+        cat > main.env << EOF
+        # Database Configuration
+        DATABASE_URL=postgresql://postgres:${{ secrets.DB_PASSWORD }}@db.figxqwdzswrvpnzsnuej.supabase.co:5432/postgres
+        
+        # Connection Pool Configuration
+        user=postgres.figxqwdzswrvpnzsnuej
+        password=${{ secrets.DB_PASSWORD }}
+        host=aws-1-eu-central-1.pooler.supabase.com
+        port=6543
+        dbname=postgres
+        
+        # Application Settings
+        ENVIRONMENT=production
+        LOG_LEVEL=INFO
+        EOF
+        
+        # Проверяем создание файла (без показа пароля)
+        echo "✅ Environment file created successfully"
+        echo "File content preview (без секретов):"
+        head -n 1 main.env
+        echo "..."
+        echo "Total lines: $(wc -l < main.env)"
+      
+    - name: Verify environment file
+      run: |
+        # Проверяем что файл существует
+        if [ ! -f main.env ]; then
+          echo "❌ ERROR: main.env file not found!"
+          exit 1
+        fi
+        
+        # Проверяем базовую структуру
+        echo "Checking main.env structure..."
+        grep -q "DATABASE_URL" main.env && echo "✓ DATABASE_URL found"
+        grep -q "host=" main.env && echo "✓ host found"
+        grep -q "dbname=" main.env && echo "✓ dbname found"
+        echo "✅ Environment file verification passed"
+      
+    - name: Run database update script
+      run: |
+        echo "Starting World Bank data update..."
+        echo "Current directory: $(pwd)"
+        echo "Files in directory:"
+        ls -la
+        
+        # Определяем какой скрипт запускать
+        if [ -f "WorldBank.py" ]; then
+          echo "Running WorldBank.py..."
+          python WorldBank.py
+        elif [ -f "WorldBank.ipynb" ]; then
+          echo "Converting and running WorldBank.ipynb..."
+          pip install nbconvert ipykernel
+          jupyter nbconvert --to python WorldBank.ipynb
+          python WorldBank.py
+        else
+          echo "❌ ERROR: No WorldBank script found!"
+          echo "Available Python files:"
+          ls *.py 2>/dev/null || echo "No .py files found"
+          exit 1
+        fi
+        
+        echo "✅ Update script completed"
+      
+    - name: Cleanup sensitive files
+      if: always()  # Выполнять всегда, даже если скрипт упал
+      run: |
+        echo "Cleaning up sensitive files..."
+        rm -f main.env
+        echo "✅ Cleanup completed"
